@@ -1,0 +1,62 @@
+import os
+import cv2
+import numpy as np
+from keras.models import load_model
+from sklearn.metrics import accuracy_score, recall_score, confusion_matrix
+from PIL import ImageOps, Image
+
+# Access Testing images
+
+test_dir_normal = './data/chest_xray/test/NORMAL/'
+test_images_normal = os.listdir(test_dir_normal)
+
+test_dir_sick = './data/chest_xray/test/PNEUMONIA/'
+test_images_sick = os.listdir(test_dir_sick)
+
+# Preprocess Images
+
+def preprocess_image(image_path):
+    """
+    Read resize and normalize image given image path. Returns image as numpy array
+    """
+    image = cv2.imread(image_path)
+    image = cv2.resize(image, (224, 224))
+    image = image / 255.0
+    image = np.asarray(image)
+
+    return image
+
+# Predicitons
+
+model = load_model('keras_model.h5')
+pred = []
+actual = []
+
+for image in test_images_normal:
+    if image is not None:
+        image_path = os.path.join(test_dir_normal, image)
+        image = preprocess_image(image_path)
+        image = np.expand_dims(image, axis=0) # add batch dimension; batch dimension is used to prep data for batch processing. NN often expect data in batches, this is why we add a batch dimension which turns a 2D image
+        # into a 3D image. This is done by adding a new axis at the 0th index.
+        pred.append(0) if model.predict(image)[0][0] > 0.95 else pred.append(1)
+        actual.append(1)
+
+for image in test_images_sick:
+    if image is not None:
+        image_path = os.path.join(test_dir_sick, image)
+        image = preprocess_image(image_path)
+        image = np.expand_dims(image, axis=0) # add batch dimension; batch dimension is used to prep data for batch processing. NN often expect data in batches, this is why we add a batch dimension which turns a 2D image
+        # into a 3D image. This is done by adding a new axis at the 0th index.
+        pred.append(0) if model.predict(image)[0][0] > 0.95 else pred.append(1)
+        actual.append(0)
+
+# Metrics
+
+accuracy = accuracy_score(actual, pred)
+
+recall = recall_score(actual, pred)
+
+conf_matrix = confusion_matrix(actual, pred)
+print('Accuracy: ', accuracy)
+print('Recall: ', recall)
+print('Confusion Matrix: ', conf_matrix)
